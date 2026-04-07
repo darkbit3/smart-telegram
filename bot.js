@@ -14,7 +14,7 @@ if (!token) {
 const bot = new TelegramBot(token, { polling: true });
 
 // Backend API Configuration
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:3000';
+const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:5000';
 
 // Notification Settings
 const notifications = {
@@ -41,10 +41,10 @@ async function storeOrUpdateTelegramUser(telegramUserId, userInfo) {
     // This would connect to your database to store/update telegram user info
     // For now, we'll just log it
     console.log(`📱 Storing telegram user: ${telegramUserId}`, userInfo);
-    
+
     // TODO: Add database connection to store in telegram_users table
     // Example: INSERT OR REPLACE INTO telegram_users (telegram_user_id, phone_number, telegram_username, first_name, last_name) VALUES (?, ?, ?, ?, ?)
-    
+
   } catch (error) {
     console.error('❌ Failed to store telegram user:', error);
   }
@@ -54,12 +54,12 @@ async function storePhoneNumber(telegramUserId, phoneNumber) {
   try {
     // Always add + prefix for phone numbers (no country code)
     const formattedPhoneNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-    
+
     console.log(`📱 Storing phone number: ${formattedPhoneNumber} for telegram user: ${telegramUserId}`);
-    
+
     // TODO: Add database connection to store in telegram_users table
     // Example: UPDATE telegram_users SET phone_number = ? WHERE telegram_user_id = ?
-    
+
   } catch (error) {
     console.error('❌ Failed to store phone number:', error);
   }
@@ -70,7 +70,7 @@ async function notifyBackendPhoneShared(telegramUserId, phoneNumber, userInfo) {
     console.log(`🔔 Notifying backend about phone sharing: ${phoneNumber} for user: ${telegramUserId}`);
     console.log('🔗 Backend URL:', BACKEND_API_URL);
     console.log('🔑 Admin API Key:', process.env.ADMIN_API_KEY ? 'Set' : 'Not set');
-    
+
     // Call the backend API to save telegram user information
     const response = await fetch(`${BACKEND_API_URL}/api/telegram-phonenumber`, {
       method: 'POST',
@@ -93,10 +93,10 @@ async function notifyBackendPhoneShared(telegramUserId, phoneNumber, userInfo) {
     if (response.ok) {
       const result = await response.json();
       console.log('✅ Backend notified successfully:', result);
-      
+
       // Check for all pending codes and send them
       await checkAndSendAllPendingCodes(phoneNumber, telegramUserId);
-      
+
       return result;
     } else {
       const errorText = await response.text();
@@ -106,7 +106,7 @@ async function notifyBackendPhoneShared(telegramUserId, phoneNumber, userInfo) {
       console.error('   Response:', errorText);
       return null;
     }
-    
+
   } catch (error) {
     console.error('❌ Failed to notify backend (Network Error):', error);
     console.error('   Error message:', error.message);
@@ -130,7 +130,7 @@ Your password reset verification code is:
 
 ❌ If you didn't request this code, please ignore this message.
   `;
-  
+
   await bot.sendMessage(chatId, message, { parse_mode: 'HTML' });
 }
 
@@ -197,17 +197,17 @@ const api = {
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const telegramUserId = msg.from.id;
-  
+
   // Store or update telegram user info
   await storeOrUpdateTelegramUser(telegramUserId, msg.from);
-  
+
   // Check for any pending codes for this user
   const userInfo = msg.from;
   if (userInfo.phone_number) {
     // If user already has phone number, check for pending codes
     await checkAndSendAllPendingCodes(userInfo.phone_number, telegramUserId);
   }
-  
+
   const welcomeMessage = `
 🔐 <b>Password Reset Service</b>
 
@@ -222,7 +222,7 @@ To reset your password, please share your phone number with this bot so we can v
 
 📱 <b>Required:</b> Share your phone number to continue
   `;
-  
+
   const keyboard = {
     keyboard: [[
       {
@@ -233,8 +233,8 @@ To reset your password, please share your phone number with this bot so we can v
     resize_keyboard: true,
     one_time_keyboard: true
   };
-  
-  await bot.sendMessage(chatId, welcomeMessage, { 
+
+  await bot.sendMessage(chatId, welcomeMessage, {
     parse_mode: 'HTML',
     reply_markup: keyboard
   });
@@ -245,15 +245,15 @@ bot.on('contact', async (msg) => {
   const chatId = msg.chat.id;
   const telegramUserId = msg.from.id;
   const contact = msg.contact;
-  
+
   if (contact.user_id !== telegramUserId) {
     await bot.sendMessage(chatId, "❌ Please share your own phone number, not someone else's.");
     return;
   }
-  
+
   const phoneNumber = contact.phone_number;
   const userInfo = msg.from;
-  
+
   // Store or update telegram user in database
   await storeOrUpdateTelegramUser(telegramUserId, {
     id: telegramUserId,
@@ -261,16 +261,16 @@ bot.on('contact', async (msg) => {
     first_name: userInfo.first_name || 'Unknown',
     username: userInfo.username || 'unknown'
   });
-  
+
   // Store phone number in database
   await storePhoneNumber(telegramUserId, phoneNumber);
-  
+
   // Notify backend about the phone number sharing
   await notifyBackendPhoneShared(telegramUserId, phoneNumber, userInfo);
-  
+
   // Check for all pending codes and send them
   await checkAndSendAllPendingCodes(phoneNumber, telegramUserId);
-  
+
   const thankYouMessage = `
 ✅ <b>Thank You!</b>
 
@@ -285,9 +285,9 @@ Your phone number has been shared successfully: <code>${phoneNumber}</code>
 
 <b>Important:</b> This phone number is now linked to your account for password reset.
   `;
-  
+
   // Remove the keyboard after phone number is shared
-  await bot.sendMessage(chatId, thankYouMessage, { 
+  await bot.sendMessage(chatId, thankYouMessage, {
     parse_mode: 'HTML',
     reply_markup: { remove_keyboard: true }
   });
@@ -311,7 +311,7 @@ This bot is specifically designed for password reset functionality.
 
 ❌ Other commands are not available as this bot is dedicated to password reset only.
   `;
-  
+
   bot.sendMessage(msg.chat.id, helpMessage, { parse_mode: 'HTML' });
 });
 
@@ -319,9 +319,9 @@ This bot is specifically designed for password reset functionality.
 bot.on('message', async (msg) => {
   // Skip if it's a contact or command
   if (msg.contact || msg.text?.startsWith('/')) return;
-  
+
   const chatId = msg.chat.id;
-  
+
   await bot.sendMessage(chatId, `
 🔐 <b>Password Reset Bot</b>
 
@@ -338,7 +338,7 @@ const notificationsAPI = {
   // Send deposit notification
   async sendDepositNotification(amount, user, time) {
     if (!notifications.deposit) return;
-    
+
     const message = formatMessage(messages.deposit, { amount, user, time });
     await sendMessage(message);
   },
@@ -346,7 +346,7 @@ const notificationsAPI = {
   // Send withdrawal notification
   async sendWithdrawNotification(amount, user, time) {
     if (!notifications.withdraw) return;
-    
+
     const message = formatMessage(messages.withdraw, { amount, user, time });
     await sendMessage(message);
   },
@@ -354,7 +354,7 @@ const notificationsAPI = {
   // Send error notification
   async sendErrorNotification(error, time) {
     if (!notifications.error) return;
-    
+
     // FIXED: Removed the extra closing brace and properly structured the object
     const message = formatMessage(messages.error, { error, time });
     await sendMessage(message);
@@ -363,7 +363,7 @@ const notificationsAPI = {
   // Send new user notification
   async sendNewUserNotification(username, phone, time) {
     if (!notifications.newUser) return;
-    
+
     const message = formatMessage(messages.newUser, { username, phone, time });
     await sendMessage(message);
   }
@@ -378,17 +378,17 @@ app.use(express.json());
 // Webhook endpoint for backend notifications
 app.post('/notify', async (req, res) => {
   const { type, data } = req.body;
-  
+
   try {
     switch (type) {
       case 'send_verification_code':
         await handleSendVerificationCode(data);
         break;
-        
+
       case 'send_registration_code':
         await handleSendRegistrationCode(data);
         break;
-        
+
       case 'phone_shared':
         await notificationsAPI.sendDepositNotification(
           data.amount,
@@ -396,7 +396,7 @@ app.post('/notify', async (req, res) => {
           data.time || new Date().toISOString()
         );
         break;
-        
+
       case 'withdraw':
         await notificationsAPI.sendWithdrawNotification(
           data.amount,
@@ -404,14 +404,14 @@ app.post('/notify', async (req, res) => {
           data.time || new Date().toISOString()
         );
         break;
-        
+
       case 'error':
         await notificationsAPI.sendErrorNotification(
           data.error,
           data.time || new Date().toISOString()
         );
         break;
-        
+
       case 'newUser':
         await notificationsAPI.sendNewUserNotification(
           data.username,
@@ -419,11 +419,11 @@ app.post('/notify', async (req, res) => {
           data.time || new Date().toISOString()
         );
         break;
-        
+
       default:
         console.log('❌ Unknown notification type:', type);
     }
-    
+
     res.json({ success: true });
   } catch (error) {
     console.error('❌ Notification error:', error);
@@ -435,9 +435,9 @@ app.post('/notify', async (req, res) => {
 async function handleSendVerificationCode(data) {
   try {
     const { phoneNumber, code, telegramUserId } = data;
-    
+
     console.log(`🔐 Sending verification code ${code} to phone ${phoneNumber}`);
-    
+
     // Send verification code to user
     const message = `
 🔐 <b>Password Reset Code</b>
@@ -448,10 +448,10 @@ async function handleSendVerificationCode(data) {
 
 🔒 Please use this code to reset your password
     `;
-    
+
     await bot.sendMessage(telegramUserId, message, { parse_mode: 'HTML' });
     console.log(`✅ Verification code sent to Telegram user ${telegramUserId}`);
-    
+
   } catch (error) {
     console.error('❌ Failed to send verification code:', error);
   }
@@ -461,9 +461,9 @@ async function handleSendVerificationCode(data) {
 async function handleSendRegistrationCode(data) {
   try {
     const { phoneNumber, code, telegramUserId } = data;
-    
+
     console.log(`🔐 Sending registration code ${code} to phone ${phoneNumber}`);
-    
+
     // Send registration code to user
     const message = `
 🎉 <b>Registration Code</b>
@@ -474,10 +474,10 @@ async function handleSendRegistrationCode(data) {
 
 🔒 Please use this code to complete your Smart Bet registration
     `;
-    
+
     await bot.sendMessage(telegramUserId, message, { parse_mode: 'HTML' });
     console.log(`✅ Registration code sent to Telegram user ${telegramUserId}`);
-    
+
   } catch (error) {
     console.error('❌ Failed to send registration code:', error);
   }
@@ -487,7 +487,7 @@ async function handleSendRegistrationCode(data) {
 async function checkAndSendAllPendingCodes(phoneNumber, telegramUserId) {
   try {
     console.log(`🔍 Checking for all pending codes for phone: ${phoneNumber}`);
-    
+
     // Check for pending registration codes
     const registrationResponse = await fetch(`${BACKEND_API_URL}/api/registration/check-pending`, {
       method: 'POST',
@@ -518,7 +518,7 @@ async function checkAndSendAllPendingCodes(phoneNumber, telegramUserId) {
     if (registrationResponse.ok) {
       const result = await registrationResponse.json();
       console.log(`📋 Pending registration check result:`, result);
-      
+
       if (result.success && result.data?.pendingCodes && result.data.pendingCodes.length > 0) {
         console.log(`📧 Sending ${result.data.pendingCodes.length} registration codes`);
         for (const pendingCode of result.data.pendingCodes) {
@@ -535,7 +535,7 @@ async function checkAndSendAllPendingCodes(phoneNumber, telegramUserId) {
     if (resetResponse.ok) {
       const result = await resetResponse.json();
       console.log(`📋 Pending reset check result:`, result);
-      
+
       if (result.success && result.data?.pendingCodes && result.data.pendingCodes.length > 0) {
         console.log(`🔐 Sending ${result.data.pendingCodes.length} reset codes`);
         for (const pendingCode of result.data.pendingCodes) {
@@ -553,7 +553,7 @@ async function checkAndSendAllPendingCodes(phoneNumber, telegramUserId) {
     } else {
       console.log(`✅ Completed pending code check for phone: ${phoneNumber}`);
     }
-    
+
   } catch (error) {
     console.error('❌ Failed to check pending codes:', error);
   }
@@ -563,7 +563,7 @@ async function checkAndSendAllPendingCodes(phoneNumber, telegramUserId) {
 async function checkAndSendPendingRegistrationCodes(phoneNumber, telegramUserId) {
   try {
     console.log(`🔍 Checking for pending registration codes for phone: ${phoneNumber}`);
-    
+
     // Call backend to check for pending registration codes
     const response = await fetch(`${BACKEND_API_URL}/api/registration/check-pending`, {
       method: 'POST',
@@ -580,7 +580,7 @@ async function checkAndSendPendingRegistrationCodes(phoneNumber, telegramUserId)
     if (response.ok) {
       const result = await response.json();
       console.log(`📋 Pending registration check result:`, result);
-      
+
       if (result.success && result.data?.pendingCodes && result.data.pendingCodes.length > 0) {
         // Send all pending registration codes
         for (const pendingCode of result.data.pendingCodes) {
@@ -590,7 +590,7 @@ async function checkAndSendPendingRegistrationCodes(phoneNumber, telegramUserId)
             telegramUserId: telegramUserId
           });
         }
-        
+
         console.log(`✅ Sent ${result.data.pendingCodes.length} pending registration codes`);
       } else {
         console.log(`ℹ️ No pending registration codes found for phone: ${phoneNumber}`);
@@ -598,7 +598,7 @@ async function checkAndSendPendingRegistrationCodes(phoneNumber, telegramUserId)
     } else {
       console.error(`❌ Failed to check pending registration codes: ${response.status}`);
     }
-    
+
   } catch (error) {
     console.error('❌ Failed to check pending registration codes:', error);
   }
@@ -606,8 +606,8 @@ async function checkAndSendPendingRegistrationCodes(phoneNumber, telegramUserId)
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'healthy', 
+  res.json({
+    status: 'healthy',
     timestamp: new Date().toISOString(),
     bot: 'running'
   });
