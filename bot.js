@@ -3,7 +3,15 @@ const axios = require('axios');
 require('dotenv').config();
 
 // Initialize Telegram Bot
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN);
+const token = process.env.TELEGRAM_BOT_TOKEN;
+
+if (!token) {
+  console.error('❌ FATAL ERROR: TELEGRAM_BOT_TOKEN is not defined in environment variables!');
+  console.error('💡 Please add it to your Render environment variables or .env file.');
+  process.exit(1);
+}
+
+const bot = new TelegramBot(token, { polling: true });
 
 // Backend API Configuration
 const BACKEND_API_URL = process.env.BACKEND_API_URL || 'http://localhost:3000';
