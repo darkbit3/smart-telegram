@@ -1,0 +1,32 @@
+{
+  "name": "smart-betting-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for Smart Betting System notifications and monitoring",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "betting",
+    "notifications",
+    "monitoring"
+  ],
+  "author": "Smart Betting System",
+  "license": "MIT",
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0",
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
